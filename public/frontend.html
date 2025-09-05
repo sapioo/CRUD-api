@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Basic Task App</title>
+  </head>
+  <body>
+    <h1>My Tasks</h1>
+
+    <!-- This is the form to add a new task -->
+    <form id="task-form">
+      <h3>Add a New Task</h3>
+      <label>Title:</label>
+      <br />
+      <input type="text" id="task-title-input" required />
+      <br />
+      <label>Description:</label>
+      <br />
+      <textarea id="task-description-input"></textarea>
+      <br /><br />
+      <button type="submit">Save New Task</button>
+    </form>
+
+    <hr />
+
+    <!-- This is where the list of tasks will appear -->
+    <h2>Task List</h2>
+    <div id="task-list-container">
+      <!-- JavaScript will put the tasks here -->
+    </div>
+
+    <script>
+      // --- Configuration ---
+      // This is the address of your backend API.
+      const API_URL = "http://localhost:5000/api/tasks";
+
+      // --- Getting references to HTML elements ---
+      const taskForm = document.getElementById("task-form");
+      const titleInput = document.getElementById("task-title-input");
+      const descriptionInput = document.getElementById(
+        "task-description-input"
+      );
+      const taskListContainer = document.getElementById("task-list-container");
+
+      // --- Function to get all tasks from the API and display them ---
+      function getAndShowAllTasks() {
+        // Clear the list first to avoid duplicates
+        taskListContainer.innerHTML = "";
+
+        // Use the fetch() function to make a GET request to your API
+        fetch(API_URL)
+          .then(function (response) {
+            return response.json(); // Convert the response to JSON
+          })
+          .then(function (data) {
+            const tasks = data.data.tasks; // Get the array of tasks from the response
+
+            // If there are no tasks, show a message
+            if (tasks.length === 0) {
+              taskListContainer.innerHTML = "<p>You have no tasks!</p>";
+            } else {
+              // Loop through each task in the array
+              tasks.forEach(function (task) {
+                // Create a new div element for this single task
+                const taskElement = document.createElement("div");
+
+                // Set the content of the div using the task's properties
+                taskElement.innerHTML = `
+                                <h4>${task.title}</h4>
+                                <p>${task.description || "No description"}</p>
+                                <p>Status: ${task.status}</p>
+                                <button data-id="${
+                                  task._id
+                                }" class="delete-button">Delete</button>
+                                <hr>
+                            `;
+
+                // Add the new task element to the container on the webpage
+                taskListContainer.appendChild(taskElement);
+              });
+            }
+          })
+          .catch(function (error) {
+            // If something goes wrong, show an error message
+            console.error("Error fetching tasks:", error);
+            taskListContainer.innerHTML =
+              "<p>Could not load tasks. Is the server running?</p>";
+          });
+      }
+
+      // --- Event Listener for the form submission ---
+      taskForm.addEventListener("submit", function (event) {
+        event.preventDefault(); // Stop the browser from refreshing the page
+
+        // Create an object with the data from the form
+        const newTask = {
+          title: titleInput.value,
+          description: descriptionInput.value,
+        };
+
+        // Send the new task to the API using a POST request
+        fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newTask), // Convert the JavaScript object to a JSON string
+        })
+          .then(function (response) {
+            if (response.ok) {
+              // If the task was created successfully...
+              titleInput.value = ""; // Clear the title input
+              descriptionInput.value = ""; // Clear the description input
+              getAndShowAllTasks(); // Refresh the list of tasks
+            } else {
+              alert("Failed to create task.");
+            }
+          })
+          .catch(function (error) {
+            console.error("Error creating task:", error);
+            alert("An error occurred.");
+          });
+      });
+
+      // --- Event Listener for Delete Buttons ---
+      // We listen for clicks on the whole container
+      taskListContainer.addEventListener("click", function (event) {
+        // Check if the clicked item was a button with the class 'delete-button'
+        if (event.target.classList.contains("delete-button")) {
+          const taskIdToDelete = event.target.getAttribute("data-id");
+
+          // Send a DELETE request to the API
+          fetch(`${API_URL}/${taskIdToDelete}`, {
+            method: "DELETE",
+          })
+            .then(function (response) {
+              if (response.ok) {
+                // If deletion was successful, refresh the list
+                getAndShowAllTasks();
+              } else {
+                alert("Failed to delete task.");
+              }
+            })
+            .catch(function (error) {
+              console.error("Error deleting task:", error);
+              alert("An error occurred.");
+            });
+        }
+      });
+
+      // --- Initial Load ---
+      // This runs once when the page is first opened.
+      getAndShowAllTasks();
+    </script>
+  </body>
+</html>
