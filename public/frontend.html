@@ -6,31 +6,42 @@
   <body>
     <h1>My Tasks</h1>
 
-    <!-- This is the form to add a new task -->
     <form id="task-form">
       <h3>Add a New Task</h3>
       <label>Title:</label>
       <br />
       <input type="text" id="task-title-input" required />
       <br />
+
       <label>Description:</label>
       <br />
       <textarea id="task-description-input"></textarea>
+      <br />
+
+      <label>Due Date:</label>
+      <br />
+      <input type="date" id="task-dueDate-input" />
+      <br />
+
+      <label>Status:</label>
+      <br />
+      <select id="task-status-input">
+        <option value="pending">Pending</option>
+        <option value="in-progress">In Progress</option>
+        <option value="completed">Completed</option>
+      </select>
       <br /><br />
+
       <button type="submit">Save New Task</button>
     </form>
 
     <hr />
 
-    <!-- This is where the list of tasks will appear -->
     <h2>Task List</h2>
-    <div id="task-list-container">
-      <!-- JavaScript will put the tasks here -->
-    </div>
+    <div id="task-list-container"></div>
 
     <script>
       // --- Configuration ---
-      // This is the address of your backend API.
       const API_URL = "http://localhost:5000/api/tasks";
 
       // --- Getting references to HTML elements ---
@@ -39,48 +50,52 @@
       const descriptionInput = document.getElementById(
         "task-description-input"
       );
+      const dueDateInput = document.getElementById("task-dueDate-input"); // NEW
+      const statusInput = document.getElementById("task-status-input"); // NEW
       const taskListContainer = document.getElementById("task-list-container");
 
       // --- Function to get all tasks from the API and display them ---
       function getAndShowAllTasks() {
-        // Clear the list first to avoid duplicates
         taskListContainer.innerHTML = "";
 
-        // Use the fetch() function to make a GET request to your API
         fetch(API_URL)
           .then(function (response) {
-            return response.json(); // Convert the response to JSON
+            return response.json();
           })
           .then(function (data) {
-            const tasks = data.data.tasks; // Get the array of tasks from the response
+            const tasks = data.data.tasks;
 
-            // If there are no tasks, show a message
             if (tasks.length === 0) {
               taskListContainer.innerHTML = "<p>You have no tasks!</p>";
             } else {
-              // Loop through each task in the array
               tasks.forEach(function (task) {
-                // Create a new div element for this single task
                 const taskElement = document.createElement("div");
 
-                // Set the content of the div using the task's properties
+                // NEW: Format the due date for display
+                let formattedDueDate = "Not set";
+                if (task.dueDate) {
+                  formattedDueDate = new Date(
+                    task.dueDate
+                  ).toLocaleDateString();
+                }
+
+                // UPDATED: Display now includes status and due date
                 taskElement.innerHTML = `
                                 <h4>${task.title}</h4>
                                 <p>${task.description || "No description"}</p>
-                                <p>Status: ${task.status}</p>
+                                <p><b>Status:</b> ${task.status}</p>
+                                <p><b>Due Date:</b> ${formattedDueDate}</p>
                                 <button data-id="${
                                   task._id
                                 }" class="delete-button">Delete</button>
                                 <hr>
                             `;
 
-                // Add the new task element to the container on the webpage
                 taskListContainer.appendChild(taskElement);
               });
             }
           })
           .catch(function (error) {
-            // If something goes wrong, show an error message
             console.error("Error fetching tasks:", error);
             taskListContainer.innerHTML =
               "<p>Could not load tasks. Is the server running?</p>";
@@ -89,28 +104,25 @@
 
       // --- Event Listener for the form submission ---
       taskForm.addEventListener("submit", function (event) {
-        event.preventDefault(); // Stop the browser from refreshing the page
+        event.preventDefault();
 
-        // Create an object with the data from the form
+        // UPDATED: Create an object with all the data from the form
         const newTask = {
           title: titleInput.value,
           description: descriptionInput.value,
+          dueDate: dueDateInput.value || null, // Send null if empty
+          status: statusInput.value,
         };
 
-        // Send the new task to the API using a POST request
         fetch(API_URL, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newTask), // Convert the JavaScript object to a JSON string
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newTask),
         })
           .then(function (response) {
             if (response.ok) {
-              // If the task was created successfully...
-              titleInput.value = ""; // Clear the title input
-              descriptionInput.value = ""; // Clear the description input
-              getAndShowAllTasks(); // Refresh the list of tasks
+              taskForm.reset(); // This clears all form fields
+              getAndShowAllTasks();
             } else {
               alert("Failed to create task.");
             }
@@ -122,19 +134,13 @@
       });
 
       // --- Event Listener for Delete Buttons ---
-      // We listen for clicks on the whole container
       taskListContainer.addEventListener("click", function (event) {
-        // Check if the clicked item was a button with the class 'delete-button'
         if (event.target.classList.contains("delete-button")) {
           const taskIdToDelete = event.target.getAttribute("data-id");
 
-          // Send a DELETE request to the API
-          fetch(`${API_URL}/${taskIdToDelete}`, {
-            method: "DELETE",
-          })
+          fetch(`${API_URL}/${taskIdToDelete}`, { method: "DELETE" })
             .then(function (response) {
               if (response.ok) {
-                // If deletion was successful, refresh the list
                 getAndShowAllTasks();
               } else {
                 alert("Failed to delete task.");
@@ -148,7 +154,6 @@
       });
 
       // --- Initial Load ---
-      // This runs once when the page is first opened.
       getAndShowAllTasks();
     </script>
   </body>
